@@ -1,0 +1,33 @@
+#include <Wire.h>
+#include <Adafruit_MLX90614.h>
+
+
+Adafruit_MLX90614 mlx = Adafruit_MLX90614();
+
+
+void setup() {
+  Serial.begin(115200); // Inițializează comunicarea serială la 115200 baud
+  Serial.println("Adafruit MLX90614 test");
+
+
+  if (!mlx.begin()) {
+    Serial.println("Could not find a valid MLX90614 sensor, check wiring!");
+    while (1);
+  }
+}
+
+
+void loop() {
+  Serial.print("Ambient = ");
+  Serial.print(mlx.readAmbientTempC());
+  Serial.println(" *C");
+ 
+  Serial.print("Object = ");
+  Serial.print(mlx.readObjectTempC());
+  Serial.println(" *C");
+ 
+  Serial.println();
+
+
+  delay(1000); // Delay de 1 secundă între citiri
+}

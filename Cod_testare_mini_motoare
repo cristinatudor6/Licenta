@@ -16,7 +16,7 @@ void loop() {
   Serial.println(fsrValue);
 
   // Controlează motorul de vibrație în funcție de valoarea FSR-ului
-  if (fsrValue > 1000) { // Dacă valoarea FSR-ului depășește 1000, pornește motorul
+  if (fsrValue < 1000) { // Dacă valoarea FSR-ului depășește 1000, pornește motorul
     digitalWrite(motorPin, HIGH);
   } else { // Altfel, oprește motorul
     digitalWrite(motorPin, LOW);

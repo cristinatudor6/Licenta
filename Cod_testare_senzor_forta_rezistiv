@@ -1,0 +1,16 @@
+const int fsrPin = 34; // Pinul la care este conectat FSR-ul
+
+void setup() {
+  Serial.begin(115200); // Inițializează comunicarea serială la 115200 baud
+  pinMode(fsrPin, INPUT); // Setează pinul fsrPin ca intrare
+}
+
+void loop() {
+  int fsrValue = analogRead(fsrPin); // Citește valoarea analogică de la FSR
+
+  // Afișează valoarea citită pe monitorul serial
+  Serial.print("FSR Value: ");
+  Serial.println(fsrValue);
+
+  delay(500); // Delay de 500 milisecunde între citiri
+}

@@ -1,0 +1,49 @@
+#include <Wire.h>
+#include <MAX30100_PulseOximeter.h>
+#include <DFRobot_MLX90614.h>
+
+#define REPORTING_PERIOD_MS 1000
+
+// Obiecte pentru senzorii MAX30100 și MLX90614
+PulseOximeter pox;
+DFRobot_MLX90614_I2C mlx;
+
+// Timpul la care a avut loc ultima bătaie de inimă
+static uint32_t tsLastReport = 0;
+
+// Funcția de callback pentru detectarea bătăilor inimii
+void onBeatDetected() {
+    Serial.println("Beat detected!");
+}
+
+void setup() {
+    Serial.begin(115200); // Inițializează comunicarea serială la 115200 baud
+    mlx.begin();
+    pox.begin();
+    Wire.setClock(100000); // Setați viteza I2C la 100kHz
+
+    
+}
+
+void loop() {
+    pox.update();
+    
+    if (millis() - tsLastReport > REPORTING_PERIOD_MS) {
+        // Citește valorile de la senzorul MAX30100
+        Serial.print("Heart BPM: ");
+        Serial.print(pox.getHeartRate());
+        Serial.print(" ----- Oxygen Percent: ");
+        Serial.println(pox.getSpO2());
+
+        // Citește valorile de la senzorul MLX90614
+        float temp = mlx.getObjectTempCelsius();
+        float ambientTemp = mlx.getAmbientTempCelsius();
+        Serial.print(" ----- Temperature: ");
+        Serial.print(temp);
+        Serial.print(" C / Ambient Temp: ");
+        Serial.print(ambientTemp);
+        Serial.println(" C");
+
+        tsLastReport = millis();
+    }
+}

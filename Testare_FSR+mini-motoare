@@ -1,0 +1,76 @@
+// Pinii pentru senzorii de forță
+const int sensor1Pin = 34; // Senzor de forță conectat la GPIO34
+const int sensor2Pin = 35; // Senzor de forță conectat la GPIO35
+const int sensor3Pin = 32; // Senzor de forță conectat la GPIO32
+const int sensor4Pin = 33; // Senzor de forță conectat la GPIO33
+
+// Pinii pentru controlul mini-motoarelor
+const int motor1Pin = 16; // Mini-motor conectat la GPIO16
+const int motor2Pin = 17; // Mini-motor conectat la GPIO17
+const int motor3Pin = 18; // Mini-motor conectat la GPIO18
+const int motor4Pin = 19; // Mini-motor conectat la GPIO19
+
+// Pragul de presiune pentru activarea vibrațiilor
+const int pressureThreshold = 1000; // Ajustați acest prag în funcție de cerințele dvs.
+
+void setup() {
+  Serial.begin(115200); // Inițializează comunicarea serială la 115200 baud
+  delay(2000); // Delay de 2 secunde pentru a inițializa monitorul serial
+
+  // Configurați pinii senzorilor ca intrări
+  pinMode(sensor1Pin, INPUT);
+  pinMode(sensor2Pin, INPUT);
+  pinMode(sensor3Pin, INPUT);
+  pinMode(sensor4Pin, INPUT);
+
+  // Configurați pinii motoarelor ca ieșiri
+  pinMode(motor1Pin, OUTPUT);
+  pinMode(motor2Pin, OUTPUT);
+  pinMode(motor3Pin, OUTPUT);
+  pinMode(motor4Pin, OUTPUT);
+}
+
+void loop() {
+  // Citește valorile de la fiecare senzor de forță
+  int sensor1Value = analogRead(sensor1Pin);
+  int sensor2Value = analogRead(sensor2Pin);
+  int sensor3Value = analogRead(sensor3Pin);
+  int sensor4Value = analogRead(sensor4Pin);
+
+  // Afișează valorile pe monitorul serial
+  Serial.print("Sensor 1 Value: ");
+  Serial.println(sensor1Value);
+  Serial.print("Sensor 2 Value: ");
+  Serial.println(sensor2Value);
+  Serial.print("Sensor 3 Value: ");
+  Serial.println(sensor3Value);
+  Serial.print("Sensor 4 Value: ");
+  Serial.println(sensor4Value);
+
+  // Verifică dacă presiunea scade sub prag și activează motoarele
+  if (sensor1Value < pressureThreshold) {
+    digitalWrite(motor1Pin, HIGH);
+  } else {
+    digitalWrite(motor1Pin, LOW);
+  }
+
+  if (sensor2Value < pressureThreshold) {
+    digitalWrite(motor2Pin, HIGH);
+  } else {
+    digitalWrite(motor2Pin, LOW);
+  }
+
+  if (sensor3Value < pressureThreshold) {
+    digitalWrite(motor3Pin, HIGH);
+  } else {
+    digitalWrite(motor3Pin, LOW);
+  }
+
+  if (sensor4Value < pressureThreshold) {
+    digitalWrite(motor4Pin, HIGH);
+  } else {
+    digitalWrite(motor4Pin, LOW);
+  }
+
+  delay(1000); // Delay de 1 secundă între citiri
+}

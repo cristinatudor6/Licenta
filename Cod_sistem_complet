@@ -1,0 +1,132 @@
+#include <Wire.h>
+#include <MAX30100_PulseOximeter.h>
+#include <DFRobot_MLX90614.h>
+
+#define REPORTING_PERIOD_MS 1000
+
+
+// Obiecte pentru senzorii MAX30100 și MLX90614
+PulseOximeter pox;
+DFRobot_MLX90614_I2C mlx;
+
+// Timpul la care a avut loc ultima bătaie de inimă
+static uint32_t tsLastReport = 0;
+
+// Funcția de callback pentru detectarea bătăilor inimii
+void onBeatDetected() {
+    Serial.println("Beat detected!");
+}
+
+// Definirea pinilor pentru senzorii de forță
+#define FORCE_SENSOR_PIN_1 34
+#define FORCE_SENSOR_PIN_2 35
+#define FORCE_SENSOR_PIN_3 32
+#define FORCE_SENSOR_PIN_4 33
+
+// Definirea pinilor pentru controlul mini-motoarelor
+#define MOTOR_PIN_1 16
+#define MOTOR_PIN_2 17
+#define MOTOR_PIN_3 18
+#define MOTOR_PIN_4 19
+
+// Pragul de presiune pentru activarea vibrațiilor
+const int pressureThreshold = 1000; // Ajustați acest prag în funcție de cerințele dvs.
+// Timp pentru citirea senzorilor FSR
+unsigned long lastFSRReadTime = 0;
+const unsigned long FSR_READ_INTERVAL = 1000; // Intervalul de citire pentru senzorii FSR
+
+
+
+void setup() {
+  Serial.begin(115200); // Inițializează comunicarea serială la 115200 baud
+  //delay(2000); // Delay de 2 secunde pentru a inițializa monitorul serial
+  mlx.begin();
+  pox.begin();
+  Wire.setClock(100000); // Setați viteza I2C la 100kHz
+
+  // Configurați pinii senzorilor ca intrări
+   pinMode(FORCE_SENSOR_PIN_1, INPUT);
+  pinMode(FORCE_SENSOR_PIN_2, INPUT);
+  pinMode(FORCE_SENSOR_PIN_3, INPUT);
+  pinMode(FORCE_SENSOR_PIN_4, INPUT);
+
+  // Configurați pinii motoarelor ca ieșiri
+  pinMode(MOTOR_PIN_1, OUTPUT);
+  pinMode(MOTOR_PIN_2, OUTPUT);
+  pinMode(MOTOR_PIN_3, OUTPUT);
+  pinMode(MOTOR_PIN_4, OUTPUT);
+}
+void readSensors() {
+  pox.update(); // Actualizează starea senzorului de puls
+
+  if (millis() - tsLastReport > REPORTING_PERIOD_MS) {
+    // Citește valorile de la senzorul MAX30100
+    Serial.print("Heart BPM: ");
+    Serial.print(pox.getHeartRate());
+    Serial.print(" ----- Oxygen Percent: ");
+    Serial.println(pox.getSpO2());
+
+    // Citește valorile de la senzorul MLX90614
+    float temp = mlx.getObjectTempCelsius();
+    float ambientTemp = mlx.getAmbientTempCelsius();
+    Serial.print(" ----- Temperature: ");
+    Serial.print(temp);
+    Serial.print(" C / Ambient Temp: ");
+    Serial.print(ambientTemp);
+    Serial.println(" C");
+
+    tsLastReport = millis();
+  }
+}
+
+void readFSRSensors() {
+  if (millis() - lastFSRReadTime >= FSR_READ_INTERVAL) {
+    lastFSRReadTime = millis();
+
+    // Citește valorile de la fiecare senzor de forță
+    int sensor1Value = analogRead(FORCE_SENSOR_PIN_1);
+    int sensor2Value = analogRead(FORCE_SENSOR_PIN_2);
+    int sensor3Value = analogRead(FORCE_SENSOR_PIN_3);
+    int sensor4Value = analogRead(FORCE_SENSOR_PIN_4);
+
+    // Afișează valorile pe monitorul serial
+    Serial.print("Sensor 1 Value: ");
+    Serial.println(sensor1Value);
+    Serial.print("Sensor 2 Value: ");
+    Serial.println(sensor2Value);
+    Serial.print("Sensor 3 Value: ");
+    Serial.println(sensor3Value);
+    Serial.print("Sensor 4 Value: ");
+    Serial.println(sensor4Value);
+
+    // Verifică dacă presiunea scade sub prag și activează motoarele
+    if (sensor1Value < pressureThreshold) {
+      digitalWrite(MOTOR_PIN_1, HIGH);
+    } else {
+      digitalWrite(MOTOR_PIN_1, LOW);
+    }
+
+    if (sensor2Value < pressureThreshold) {
+      digitalWrite(MOTOR_PIN_2, HIGH);
+    } else {
+      digitalWrite(MOTOR_PIN_2, LOW);
+    }
+
+    if (sensor3Value < pressureThreshold) {
+      digitalWrite(MOTOR_PIN_3, HIGH);
+    } else {
+      digitalWrite(MOTOR_PIN_3, LOW);
+    }
+
+    if (sensor4Value < pressureThreshold) {
+      digitalWrite(MOTOR_PIN_4, HIGH);
+    } else {
+      digitalWrite(MOTOR_PIN_4, LOW);
+    }
+  }
+}
+
+void loop() {
+  readSensors();
+  readFSRSensors();
+}

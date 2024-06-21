@@ -1,1 +1,208 @@
+#include <Wire.h>
+#include <DFRobot_MLX90614.h>
+#include <MAX30100_PulseOximeter.h>
+#include <WiFi.h>
+#include <ArduinoJson.h>
 
+
+#define REPORTING_PERIOD_MS 1000
+
+
+// Detaliile rețelei Wi-Fi
+const char* ssid = "DIGI_a2beb2";         // numele rețelei tale Wi-Fi
+const char* password = "2d53100c"; // parola rețelei tale Wi-Fi
+
+
+// Obiecte pentru senzorii MAX30100 și MLX90614
+PulseOximeter pox;
+DFRobot_MLX90614_I2C mlx;
+
+// Timpul la care a avut loc ultima bătaie de inimă
+static uint32_t tsLastReport = 0;
+
+// Funcția de callback pentru detectarea bătăilor inimii
+void onBeatDetected() {
+    Serial.println("Beat detected!");
+}
+
+// Definirea pinilor pentru senzorii de forță
+#define FORCE_SENSOR_PIN_1 34
+#define FORCE_SENSOR_PIN_2 35
+#define FORCE_SENSOR_PIN_3 32
+#define FORCE_SENSOR_PIN_4 33
+
+// Definirea pinilor pentru controlul mini-motoarelor
+#define MOTOR_PIN_1 16
+#define MOTOR_PIN_2 17
+#define MOTOR_PIN_3 18
+#define MOTOR_PIN_4 19
+
+// Pragul de presiune pentru activarea vibrațiilor
+const int pressureThreshold = 1000; 
+
+WiFiServer server(80); // Declarația corectă a instanței de server
+
+unsigned long lastReadTime = 0;
+unsigned long lastConnectAttemptTime = 0;
+const unsigned long connectAttemptInterval = 1000; // Intervalul de încercare a conectării la Wi-Fi
+
+void setup() {
+  Serial.begin(115200); // Inițializează comunicarea serială la 115200 baud
+
+  mlx.begin();
+  pox.begin();
+  Wire.setClock(100000); //viteza I2C la 100kHz
+
+  // Conectare la Wi-Fi
+  WiFi.begin(ssid, password);
+  lastConnectAttemptTime = millis();
+
+  // Configurați pinii senzorilor ca intrări
+  pinMode(FORCE_SENSOR_PIN_1, INPUT);
+  pinMode(FORCE_SENSOR_PIN_2, INPUT);
+  pinMode(FORCE_SENSOR_PIN_3, INPUT);
+  pinMode(FORCE_SENSOR_PIN_4, INPUT);
+
+  // Configurați pinii motoarelor ca ieșiri
+  pinMode(MOTOR_PIN_1, OUTPUT);
+  pinMode(MOTOR_PIN_2, OUTPUT);
+  pinMode(MOTOR_PIN_3, OUTPUT);
+  pinMode(MOTOR_PIN_4, OUTPUT);
+
+  server.begin(); 
+}
+
+void readSensors() {
+  pox.update(); // Actualizează starea senzorului de puls
+
+  if (millis() - tsLastReport > REPORTING_PERIOD_MS) {
+    tsLastReport = millis();
+
+    // Citește valorile de la senzorul MAX30100
+    Serial.print("Heart BPM: ");
+    Serial.print(pox.getHeartRate());
+    Serial.print(" ----- Oxygen Percent: ");
+    Serial.println(pox.getSpO2());
+
+    // Citește valorile de la senzorul MLX90614
+    float temp = mlx.getObjectTempCelsius();
+    float ambientTemp = mlx.getAmbientTempCelsius();
+    Serial.print(" ----- Temperature: ");
+    Serial.print(temp);
+    Serial.print(" C / Ambient Temp: ");
+    Serial.print(ambientTemp);
+    Serial.println(" C");
+  }
+}
+
+String determinePosture(int forceValues[]) {
+  if (forceValues[0] < pressureThreshold && forceValues[1] < pressureThreshold &&
+      forceValues[2] < pressureThreshold && forceValues[3] < pressureThreshold) {
+    return "No pressure detected";
+  } else if (forceValues[0] < pressureThreshold && forceValues[1] < pressureThreshold) {
+    return "Leaning forward";
+  } else if (forceValues[2] < pressureThreshold && forceValues[3] < pressureThreshold) {
+    return "Leaning backward";
+  } else if (forceValues[0] < pressureThreshold && forceValues[2] < pressureThreshold) {
+    return "Leaning left";
+  } else if (forceValues[1] < pressureThreshold && forceValues[3] < pressureThreshold) {
+    return "Leaning right";
+  } else {
+    return "Neutral";
+  }
+}
+
+void readFSRSensors() {
+  if (millis() - lastReadTime >= REPORTING_PERIOD_MS) {
+    lastReadTime = millis();
+
+    // Citește valorile de la fiecare senzor de forță
+    int forceValues[4];
+    forceValues[0] = analogRead(FORCE_SENSOR_PIN_1);
+    forceValues[1] = analogRead(FORCE_SENSOR_PIN_2);
+    forceValues[2] = analogRead(FORCE_SENSOR_PIN_3);
+    forceValues[3] = analogRead(FORCE_SENSOR_PIN_4);
+
+    // Afișează valorile pe monitorul serial
+    Serial.print("Sensor 1 Value: ");
+    Serial.println(forceValues[0]);
+    Serial.print("Sensor 2 Value: ");
+    Serial.println(forceValues[1]);
+    Serial.print("Sensor 3 Value: ");
+    Serial.println(forceValues[2]);
+    Serial.print("Sensor 4 Value: ");
+    Serial.println(forceValues[3]);
+
+    // Determină postura
+    String posture = determinePosture(forceValues);
+    Serial.print("Posture: ");
+    Serial.println(posture);
+
+    // Activează motoarele de vibrație dacă postura este incorectă
+    bool postureAlert = posture != "Neutral";
+    digitalWrite(MOTOR_PIN_1, postureAlert ? HIGH : LOW);
+    digitalWrite(MOTOR_PIN_2, postureAlert ? HIGH : LOW);
+    digitalWrite(MOTOR_PIN_3, postureAlert ? HIGH : LOW);
+    digitalWrite(MOTOR_PIN_4, postureAlert ? HIGH : LOW);
+  }
+}
+
+void loop() {
+  // Încercare de reconectare la Wi-Fi dacă este deconectat
+  if (WiFi.status() != WL_CONNECTED && (millis() - lastConnectAttemptTime >= connectAttemptInterval)) {
+    Serial.println("Reconnecting to WiFi...");
+    WiFi.begin(ssid, password);
+    lastConnectAttemptTime = millis();
+  }
+
+  readSensors();
+  readFSRSensors();
+
+  WiFiClient client = server.available(); 
+  if (client) {
+    Serial.println("New Client Connected");
+    while (client.connected()) {
+      if (client.available()) {
+        String req = client.readStringUntil('\r');
+        client.flush();
+        Serial.println("Client request received");
+
+        float objectTemp = mlx.getObjectTempCelsius();
+        float ambientTemp = mlx.getAmbientTempCelsius();
+        float pulseValue = pox.getHeartRate();
+        float spo2Value = pox.getSpO2();
+
+        int forceValues[4];
+        forceValues[0] = analogRead(FORCE_SENSOR_PIN_1);
+        forceValues[1] = analogRead(FORCE_SENSOR_PIN_2);
+        forceValues[2] = analogRead(FORCE_SENSOR_PIN_3);
+        forceValues[3] = analogRead(FORCE_SENSOR_PIN_4);
+
+        String posture = determinePosture(forceValues);
+
+        StaticJsonDocument<400> jsonDoc;
+        jsonDoc["temperature"] = objectTemp;
+        jsonDoc["ambientTemp"] = ambientTemp;
+        jsonDoc["pulse"] = pulseValue;
+        jsonDoc["spo2"] = spo2Value;
+        jsonDoc["force1"] = forceValues[0];
+        jsonDoc["force2"] = forceValues[1];
+        jsonDoc["force3"] = forceValues[2];
+        jsonDoc["force4"] = forceValues[3];
+        jsonDoc["posture"] = posture;
+
+        String jsonString;
+        serializeJson(jsonDoc, jsonString);
+
+        // Trimiterea unui răspuns simplu
+        client.println("HTTP/1.1 200 OK");
+        client.println("Content-type:application/json");
+        client.println();
+        client.print(jsonString);
+        break;
+      }
+    }
+    client.stop();
+    Serial.println("Client Disconnected");
+  }
+}

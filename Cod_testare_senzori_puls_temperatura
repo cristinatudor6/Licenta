@@ -20,7 +20,7 @@ void setup() {
     Serial.begin(115200); // Inițializează comunicarea serială la 115200 baud
     mlx.begin();
     pox.begin();
-    Wire.setClock(100000); // Setați viteza I2C la 100kHz
+    Wire.setClock(100000); // viteza I2C la 100kHz
 
     
 }

@@ -11,7 +11,7 @@ const int motor3Pin = 18; // Mini-motor conectat la GPIO18
 const int motor4Pin = 19; // Mini-motor conectat la GPIO19
 
 // Pragul de presiune pentru activarea vibrațiilor
-const int pressureThreshold = 1000; // Ajustați acest prag în funcție de cerințele dvs.
+const int pressureThreshold = 1000; 
 
 void setup() {
   Serial.begin(115200); // Inițializează comunicarea serială la 115200 baud

@@ -10,7 +10,7 @@
 
 // Detaliile rețelei Wi-Fi
 const char* ssid = "DIGI_a2beb2";         // numele rețelei tale Wi-Fi
-const char* password = "2d53100c"; // parola rețelei tale Wi-Fi
+const char* password = "2d53100c"; //  parola rețelei tale Wi-Fi
 
 
 // Obiecte pentru senzorii MAX30100 și MLX90614
@@ -40,7 +40,7 @@ void onBeatDetected() {
 // Pragul de presiune pentru activarea vibrațiilor
 const int pressureThreshold = 1000; 
 
-WiFiServer server(80); // Declarația corectă a instanței de server
+WiFiServer server(80); 
 
 unsigned long lastReadTime = 0;
 unsigned long lastConnectAttemptTime = 0;
@@ -51,7 +51,7 @@ void setup() {
 
   mlx.begin();
   pox.begin();
-  Wire.setClock(100000); //viteza I2C la 100kHz
+  Wire.setClock(100000); // viteza I2C la 100kHz
 
   // Conectare la Wi-Fi
   WiFi.begin(ssid, password);
@@ -98,17 +98,17 @@ void readSensors() {
 String determinePosture(int forceValues[]) {
   if (forceValues[0] < pressureThreshold && forceValues[1] < pressureThreshold &&
       forceValues[2] < pressureThreshold && forceValues[3] < pressureThreshold) {
-    return "No pressure detected";
+    return "Nicio presiune detectata";
   } else if (forceValues[0] < pressureThreshold && forceValues[1] < pressureThreshold) {
-    return "Leaning forward";
+    return "Aplecat in fata";
   } else if (forceValues[2] < pressureThreshold && forceValues[3] < pressureThreshold) {
-    return "Leaning backward";
+    return "Aplecat in spate";
   } else if (forceValues[0] < pressureThreshold && forceValues[2] < pressureThreshold) {
-    return "Leaning left";
+    return "Aplecat spre stanga";
   } else if (forceValues[1] < pressureThreshold && forceValues[3] < pressureThreshold) {
-    return "Leaning right";
+    return "Aplecat spre dreapta";
   } else {
-    return "Neutral";
+    return "Pozitie corecta";
   }
 }
 

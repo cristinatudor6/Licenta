@@ -108,7 +108,7 @@ String determinePosture(int forceValues[]) {
   } else if (forceValues[1] < pressureThreshold && forceValues[3] < pressureThreshold) {
     return "Aplecat spre dreapta";
   } else {
-    return "Pozitie corecta";
+    return "Neutru";
   }
 }
 

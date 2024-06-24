@@ -4,14 +4,12 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 
-
 #define REPORTING_PERIOD_MS 1000
-
+#define AVERAGE_SAMPLES 10  // Numărul de mostre pentru medie
 
 // Detaliile rețelei Wi-Fi
 const char* ssid = "DIGI_a2beb2";         // numele rețelei tale Wi-Fi
 const char* password = "2d53100c"; //  parola rețelei tale Wi-Fi
-
 
 // Obiecte pentru senzorii MAX30100 și MLX90614
 PulseOximeter pox;
@@ -46,6 +44,11 @@ unsigned long lastReadTime = 0;
 unsigned long lastConnectAttemptTime = 0;
 const unsigned long connectAttemptInterval = 1000; // Intervalul de încercare a conectării la Wi-Fi
 
+// Variabile pentru media mobilă
+float pulseReadings[AVERAGE_SAMPLES];
+int pulseIndex = 0;
+bool pulseBufferFilled = false;
+
 void setup() {
   Serial.begin(115200); // Inițializează comunicarea serială la 115200 baud
 
@@ -72,15 +75,33 @@ void setup() {
   server.begin(); 
 }
 
+float getAveragePulse() {
+  float sum = 0;
+  int count = pulseBufferFilled ? AVERAGE_SAMPLES : pulseIndex;
+  for (int i = 0; i < count; i++) {
+    sum += pulseReadings[i];
+  }
+  return sum / count;
+}
+
 void readSensors() {
   pox.update(); // Actualizează starea senzorului de puls
 
   if (millis() - tsLastReport > REPORTING_PERIOD_MS) {
     tsLastReport = millis();
 
-    // Citește valorile de la senzorul MAX30100
-    Serial.print("Heart BPM: ");
-    Serial.print(pox.getHeartRate());
+    // Citește valoarea curentă de la senzorul de puls
+    float currentPulse = pox.getHeartRate();
+    pulseReadings[pulseIndex] = currentPulse;
+    pulseIndex = (pulseIndex + 1) % AVERAGE_SAMPLES;
+    if (pulseIndex == 0) {
+      pulseBufferFilled = true;
+    }
+    float averagePulse = getAveragePulse();
+
+    // Afișează valorile pe monitorul serial
+    Serial.print("Heart BPM (average): ");
+    Serial.print(averagePulse);
     Serial.print(" ----- Oxygen Percent: ");
     Serial.println(pox.getSpO2());
 
@@ -139,7 +160,7 @@ void readFSRSensors() {
     Serial.println(posture);
 
     // Activează motoarele de vibrație dacă postura este incorectă
-    bool postureAlert = posture != "Neutral";
+    bool postureAlert = posture != "Neutru";
     digitalWrite(MOTOR_PIN_1, postureAlert ? HIGH : LOW);
     digitalWrite(MOTOR_PIN_2, postureAlert ? HIGH : LOW);
     digitalWrite(MOTOR_PIN_3, postureAlert ? HIGH : LOW);
@@ -169,7 +190,7 @@ void loop() {
 
         float objectTemp = mlx.getObjectTempCelsius();
         float ambientTemp = mlx.getAmbientTempCelsius();
-        float pulseValue = pox.getHeartRate();
+        float pulseValue = getAveragePulse();
         float spo2Value = pox.getSpO2();
 
         int forceValues[4];
